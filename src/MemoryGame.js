@@ -35,18 +35,59 @@ export default class MemoryGame extends Component{
         this.state = {cards, noClick: false};
 
         this.handleClick = this.handleClick.bind(this);
+        this.handleNewGame = this.handleNewGame.bind(this);
     }
 
     handleClick(id){
-        this.setState(prevState => {
-            let cards = prevState.cards.map(c => (
-                c.id === id ? {
-                    ...c,
-                    cardState: c.cardState === CardState.HIDING ? CardState.MATCHING : CardState.HIDING
-                } : c
-            ));
-            return {cards};
-        });
+        const mapCardState = (cards, idsToChange, newCardState) => {
+            return cards.map(c => {
+                if(idsToChange.includes(c.id)){
+                    return {
+                        ...c,
+                        cardState: newCardState
+                    };
+                }
+                return c;
+            });
+        }
+
+        const foundCard = this.state.cards.find(c => c.id === id);
+
+        if(this.state.noClick || foundCard.cardState !== CardState.HIDING){
+            return;
+        }
+
+        let noClick = false;
+
+        let cards = mapCardState(this.state.cards, [id], CardState.SHOWING)
+
+        const showingCards = cards.filter((c) => c.cardState === CardState.SHOWING);
+
+        const ids = showingCards.map(c => c.id);
+
+        if(showingCards.length === 2 && showingCards[0].backgroundColor === showingCards[1].backgroundColor){
+            cards = mapCardState(cards, ids, CardState.MATCHING);
+        } else if(showingCards.length === 2){
+            let hidingCards = mapCardState(cards, ids, CardState.HIDING);
+
+            noClick = true;
+            this.setState({cards, noClick}, () => {
+                setTimeout(() => {
+                    this.setState({cards: hidingCards, noClick: false});
+                }, 1500)
+            });
+            return; 
+        }
+        this.setState({cards, noClick});
+    }
+
+    handleNewGame(){
+        let cards = this.state.cards.map(c => ({
+            ...c,
+            cardState: CardState.HIDING
+        }))
+        cards = shuffle(cards);
+        this.setState({cards});
     }
 
     render(){
@@ -60,7 +101,7 @@ export default class MemoryGame extends Component{
         ))
         return(
             <div className='CardList'>
-                <Navbar />
+                <Navbar onNewGame={this.handleNewGame}/>
                 {cards}
             </div>
         )
